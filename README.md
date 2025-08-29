@@ -18,6 +18,12 @@
 - ใช้ Left Stick สำหรับเคลื่อนที่ (หน้า-หลัง, ซ้าย-ขวา)
 - ใช้ Right Stick สำหรับการหมุนตัว
 
+✅ **ระบบ PWM Speed Control ที่ปรับปรุงแล้ว**
+- PWM มีการจำกัดค่าในช่วง 0-255 อย่างปลอดภัย
+- ค่า PWM ขั้นต่ำสำหรับการเริ่มต้นมอเตอร์ (50)
+- ฟังก์ชันควบคุมความเร็วแบบค่อยเป็นค่อยไป
+- ตัวเลือกปรับความถี่ PWM สำหรับการทำงานที่เงียบขึ้น
+
 ✅ **ระบบความปลอดภัย**
 - Emergency Stop (ปุ่ม Back)
 - Enable/Disable Robot (ปุ่ม Start)
@@ -35,10 +41,11 @@
 
 ### ไฟล์ในโครงการ (Project Files)
 
-1. **`robot_controller.ino`** - โค้ดหลักสำหรับควบคุมหุ่นยนต์
+1. **`robot_controller.ino`** - โค้ดหลักสำหรับควบคุมหุ่นยนต์ (ปรับปรุง PWM แล้ว)
 2. **`motor_control_examples.ino`** - ตัวอย่างการควบคุมมอเตอร์และการทดสอบ
-3. **`WIRING_DIAGRAM.md`** - คู่มือการเชื่อมต่อสายไฟ
-4. **`libraries_setup.md`** - คู่มือการติดตั้ง Library
+3. **`pwm_test.ino`** - สคริปต์ทดสอบ PWM Speed Controller
+4. **`WIRING_DIAGRAM.md`** - คู่มือการเชื่อมต่อสายไฟ
+5. **`libraries_setup.md`** - คู่มือการติดตั้ง Library
 
 ### การติดตั้งและใช้งาน (Installation & Usage)
 
@@ -75,7 +82,14 @@ Arduino IDE → Tools → Manage Libraries
 
 ### การทดสอบระบบ (System Testing)
 
-#### 1. ทดสอบการเชื่อมต่อ
+#### 1. ทดสอบ PWM Speed Controller
+```cpp
+// ใช้ไฟล์ pwm_test.ino สำหรับทดสอบ PWM
+// เปิด Serial Monitor ที่ 115200 baud
+// ระบบจะทดสอบการจำกัดค่า PWM และการควบคุมความเร็วอัตโนมัติ
+```
+
+#### 2. ทดสอบการเชื่อมต่อ
 ```cpp
 // ใช้ไฟล์ motor_control_examples.ino
 // เปิด Serial Monitor ที่ 115200 baud
