@@ -1,11 +1,14 @@
 /*
- * Robot Controller System
+ * Robot Controller System with Enhanced PWM Speed Control
  * Arduino Mega + Xbox 360 Controller
  * 
  * This code controls a robot car using Xbox 360 controller input
  * Features:
+ * - Enhanced PWM motor control with proper speed constraints
+ * - Smooth acceleration/deceleration functions
+ * - Configurable PWM frequency for optimal motor performance
  * - Motor control for movement (forward, backward, left, right)
- * - Speed control using analog sticks
+ * - Speed control using analog sticks with deadzone
  * - Emergency stop functionality
  * - LED indicators for status
  */
@@ -40,6 +43,29 @@ bool robotEnabled = false;
 // Controller deadzone (to prevent drift)
 const int deadzone = 20;
 
+// PWM and Speed Control Settings
+const int minPWM = 0;          // Minimum PWM value (motor stop)
+const int maxPWM = 255;        // Maximum PWM value (full speed)
+const int startupPWM = 50;     // Minimum PWM to start motor movement
+
+// PWM Frequency Control (optional - for advanced users)
+void setPWMFrequency(int pin, int divisor) {
+  byte mode;
+  if(pin == 2 || pin == 3 || pin == 5 || pin == 6 || pin == 7 || pin == 8) {
+    switch(divisor) {
+      case 1: mode = 0x01; break;    // 31372.55 Hz
+      case 8: mode = 0x02; break;    // 3921.16 Hz
+      case 64: mode = 0x03; break;   // 490.20 Hz (default)
+      case 256: mode = 0x04; break;  // 122.55 Hz
+      case 1024: mode = 0x05; break; // 30.64 Hz
+      default: return;
+    }
+    if(pin == 2 || pin == 3) {
+      TCCR3B = TCCR3B & 0b11111000 | mode;
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   
@@ -57,6 +83,11 @@ void setup() {
   pinMode(motorB_pin1, OUTPUT);
   pinMode(motorB_pin2, OUTPUT);
   pinMode(motorB_enable, OUTPUT);
+  
+  // Set PWM frequency for smoother motor control (optional)
+  // Uncomment the lines below to use higher frequency PWM for quieter operation
+  // setPWMFrequency(motorA_enable, 8);  // ~3.9kHz instead of default 490Hz
+  // setPWMFrequency(motorB_enable, 8);  // ~3.9kHz instead of default 490Hz
   
   // Initialize LED pins
   pinMode(ledConnected, OUTPUT);
@@ -188,29 +219,37 @@ void setMotorSpeed(int leftSpeed, int rightSpeed) {
   if (leftSpeed > 0) {
     digitalWrite(motorA_pin1, HIGH);
     digitalWrite(motorA_pin2, LOW);
+    // Apply minimum PWM for reliable motor startup
+    leftSpeed = max(leftSpeed, startupPWM);
   } else if (leftSpeed < 0) {
     digitalWrite(motorA_pin1, LOW);
     digitalWrite(motorA_pin2, HIGH);
     leftSpeed = -leftSpeed;
+    // Apply minimum PWM for reliable motor startup
+    leftSpeed = max(leftSpeed, startupPWM);
   } else {
     digitalWrite(motorA_pin1, LOW);
     digitalWrite(motorA_pin2, LOW);
   }
-  analogWrite(motorA_enable, leftSpeed);
+  analogWrite(motorA_enable, constrain(leftSpeed, minPWM, maxPWM));
   
   // Right Motor Control
   if (rightSpeed > 0) {
     digitalWrite(motorB_pin1, HIGH);
     digitalWrite(motorB_pin2, LOW);
+    // Apply minimum PWM for reliable motor startup
+    rightSpeed = max(rightSpeed, startupPWM);
   } else if (rightSpeed < 0) {
     digitalWrite(motorB_pin1, LOW);
     digitalWrite(motorB_pin2, HIGH);
     rightSpeed = -rightSpeed;
+    // Apply minimum PWM for reliable motor startup
+    rightSpeed = max(rightSpeed, startupPWM);
   } else {
     digitalWrite(motorB_pin1, LOW);
     digitalWrite(motorB_pin2, LOW);
   }
-  analogWrite(motorB_enable, rightSpeed);
+  analogWrite(motorB_enable, constrain(rightSpeed, minPWM, maxPWM));
 }
 
 void stopAllMotors() {
@@ -222,6 +261,28 @@ void stopAllMotors() {
   analogWrite(motorB_enable, 0);
   leftMotorSpeed = 0;
   rightMotorSpeed = 0;
+}
+
+// Smoothed motor speed control for gradual acceleration/deceleration
+void setMotorSpeedSmooth(int targetLeftSpeed, int targetRightSpeed, int accelerationRate = 10) {
+  static int currentLeftSpeed = 0;
+  static int currentRightSpeed = 0;
+  
+  // Gradually adjust current speeds toward target speeds
+  if (currentLeftSpeed < targetLeftSpeed) {
+    currentLeftSpeed = min(currentLeftSpeed + accelerationRate, targetLeftSpeed);
+  } else if (currentLeftSpeed > targetLeftSpeed) {
+    currentLeftSpeed = max(currentLeftSpeed - accelerationRate, targetLeftSpeed);
+  }
+  
+  if (currentRightSpeed < targetRightSpeed) {
+    currentRightSpeed = min(currentRightSpeed + accelerationRate, targetRightSpeed);
+  } else if (currentRightSpeed > targetRightSpeed) {
+    currentRightSpeed = max(currentRightSpeed - accelerationRate, targetRightSpeed);
+  }
+  
+  // Apply the smoothed speeds
+  setMotorSpeed(currentLeftSpeed, currentRightSpeed);
 }
 
 void handleButtonPresses(uint8_t controller) {
